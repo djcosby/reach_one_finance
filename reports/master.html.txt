@@ -1,0 +1,141 @@
+<!-- templates/reports/master.html -->
+<!doctype html><html><head>
+<meta charset="utf-8">
+<title>Reach One — Internal Financial Report ({{ period.label }})</title>
+<style>
+:root{
+  --ink:#0e2d1c; /* forest green deep */
+  --green:#198754; --muted:#475569; --line:#e5e7eb; --bg:#f7faf9; --accent:#2e7d32;
+  --ok:#0f5132; --warn:#b45309; --danger:#b91c1c;
+}
+@page { size: A4; margin: 20mm; }  /* A4, normal margins */
+@media print { .no-print { display:none } }
+html,body{margin:0;padding:0;background:var(--bg);color:#111;font:14px/1.55 system-ui,Segoe UI,Roboto,Helvetica,Arial}
+.container{max-width:1150px;margin:24px auto;background:#fff;padding:28px;border:1px solid var(--line);border-radius:12px}
+h1,h2{color:var(--ink);margin:0 0 12px 0}
+h1{font-size:24px}
+h2{font-size:18px;border-bottom:2px solid var(--line);padding-bottom:6px;margin-top:18px}
+.table{width:100%;border-collapse:collapse;margin:10px 0 18px}
+th,td{padding:10px 12px;border-bottom:1px solid var(--line);text-align:left}
+th{background:#eef6f0;color:#0e2d1c}
+.total-row td{font-weight:700;background:#edf7ed;color:#0e2d1c}
+.card{border:1px solid var(--line);border-radius:10px;padding:14px;margin:10px 0}
+.kv{display:flex;justify-content:space-between;margin:4px 0}
+.pill{display:inline-block;padding:2px 8px;border-radius:999px;background:#e5f4ea;color:#0e2d1c}
+.final{font-weight:800;color:var(--ok)}
+.btn{display:inline-block;padding:8px 12px;border:1px solid var(--ink);border-radius:8px;color:#fff;background:var(--ink);text-decoration:none}
+</style>
+</head><body>
+<div class="container">
+  <div class="no-print" style="text-align:right;margin-bottom:8px">
+    <a class="btn" href="#" onclick="window.print()">Print A4</a>
+  </div>
+
+  <h1>Reach One Recovery Services — Internal Financial Report</h1>
+  <div style="color:var(--muted);margin-bottom:12px">
+    Pay Period: <strong>{{ period.start }}–{{ period.end }}</strong> • Generated: {{ now }}
+  </div>
+
+  <!-- Section 1: Remittance Summary -->
+  <h2>Section 1: Remittance Summary</h2>
+  <table class="table">
+    <thead><tr><th>Payer</th><th>Payment Date</th><th>Payment Amount</th></tr></thead>
+    <tbody>
+      {% for r in remittances %}
+      <tr><td>{{ r.payer }}</td><td>{{ r.date }}</td><td>{{ r.amount_fmt }}</td></tr>
+      {% endfor %}
+      <tr class="total-row"><td colspan="2">Total Gross Revenue Received</td><td>{{ totals.total_gross_fmt }}</td></tr>
+    </tbody>
+  </table>
+
+  <!-- Section 2: Gross Revenue by Program -->
+  <h2>Section 2: Gross Revenue by Program</h2>
+  <table class="table">
+    <thead><tr><th>Program</th><th>Total Claims</th><th>Clients</th><th>Total Paid</th></tr></thead>
+    <tbody>
+      {% for p in programs %}
+      <tr><td>{{ p.name }}</td><td>{{ p.claims }}</td><td>{{ p.clients }}</td><td>{{ p.paid_fmt }}</td></tr>
+      {% endfor %}
+      <tr class="total-row"><td>Totals</td><td>{{ totals.total_claims }}</td><td>{{ totals.total_clients }}</td><td>{{ totals.total_gross_fmt }}</td></tr>
+    </tbody>
+  </table>
+
+  <!-- Section 3: Difference Pot -->
+  <h2>Section 3: Adjustments (Difference Pot)</h2>
+  <div class="card">
+    <div class="kv"><span>Partner IOP Units</span><span>{{ adjustments.iop_units }}</span></div>
+    <div class="kv"><span>Difference per Unit</span><span>$52.81</span></div>
+    <div class="kv final"><span>Total Difference Pot</span><span>{{ totals.difference_pot_fmt }}</span></div>
+  </div>
+
+  <!-- Section 4: Partner Distributions -->
+  <h2>Section 4: Partner Distributions</h2>
+  <table class="table">
+    <thead><tr><th>Program</th><th>Adjusted Revenue</th><th>Split</th><th>Partner Payout</th><th>RORS Share</th></tr></thead>
+    <tbody>
+      {% for row in partner_rows %}
+      <tr>
+        <td>{{ row.program }}</td>
+        <td>{{ row.adjusted_fmt }}</td>
+        <td>{{ row.split_label }}</td>
+        <td>{{ row.partner_payout_fmt }}</td>
+        <td>{{ row.rors_share_fmt }}</td>
+      </tr>
+      {% endfor %}
+      <tr class="total-row"><td colspan="3">Totals</td><td>{{ partner_totals.payouts_fmt }}</td><td>{{ partner_totals.rors_share_fmt }}</td></tr>
+    </tbody>
+  </table>
+
+  <!-- Section 5: RORS Operating Pot -->
+  <h2>Section 5: RORS Operating Pot</h2>
+  <div class="card">
+    <div class="kv"><span>Direct Billing (RORS)</span><span>{{ totals.rors_direct_fmt }}</span></div>
+    <div class="kv"><span>RORS Share (Partners)</span><span>{{ totals.rors_share_total_fmt }}</span></div>
+    <div class="kv"><span>Difference Pot</span><span>{{ totals.difference_pot_fmt }}</span></div>
+    <div class="kv final"><span>RORS Operating Pot</span><span>{{ totals.rors_pot_fmt }}</span></div>
+  </div>
+
+  <!-- Section 6: Fixed + Donation -->
+  <h2>Section 6: Fixed Costs & Donation</h2>
+  <table class="table">
+    <thead><tr><th>Recipient / Purpose</th><th>Amount</th></tr></thead>
+    <tbody>
+      {% for k,v in costs.fixed_costs.items %}
+      <tr><td>{{ k }}</td><td>{{ v|currency }}</td></tr>
+      {% endfor %}
+      <tr><td>Donation — Redeemed & Transformed</td><td>{{ costs.donation|currency }}</td></tr>
+      <tr class="total-row"><td>Total Fixed + Donation</td><td>{{ costs.fixed_plus_donation_fmt }}</td></tr>
+    </tbody>
+  </table>
+
+  <!-- Section 7: Housing & Savings -->
+  <h2>Section 7: Housing & Savings</h2>
+  <table class="table">
+    <thead><tr><th>Category</th><th>Amount</th><th>Status</th></tr></thead>
+    <tbody>
+      <tr><td>Men’s House</td><td>{{ costs.housing_men_fmt }}</td><td><span class="pill">{{ housing.men_status }}</span></td></tr>
+      <tr><td>Women’s House</td><td>{{ costs.housing_women_fmt }}</td><td><span class="pill">{{ housing.women_status }}</span></td></tr>
+      <tr class="total-row"><td>Total Housing</td><td>{{ costs.housing_total_fmt }}</td><td></td></tr>
+    </tbody>
+  </table>
+
+  <div class="card">
+    <div class="kv"><span>RORS Pot</span><span>{{ totals.rors_pot_fmt }}</span></div>
+    <div class="kv"><span>Fixed + Donation</span><span>{{ costs.fixed_plus_donation_fmt }}</span></div>
+    <div class="kv"><span>Housing Total</span><span>{{ costs.housing_total_fmt }}</span></div>
+    <div class="kv final"><span>Residual → Savings (if ≥ 0)</span><span>{{ result.residual_fmt }}</span></div>
+    <div class="kv"><span>Savings</span><span>{{ result.savings_fmt }}</span></div>
+    <div class="kv"><span>Deficit</span><span style="color:var(--danger)">{{ result.deficit_fmt }}</span></div>
+  </div>
+
+  <!-- Links to Program Rosters -->
+  <h2>Appendix: Program Rosters</h2>
+  <ul>
+    <li><a href="{{ links.reach_one }}">Reach One Roster</a></li>
+    <li><a href="{{ links.miracle_house }}">Miracle House Roster</a></li>
+    <li><a href="{{ links.stairway }}">Stairway to Hope Roster</a></li>
+    <li><a href="{{ links.hoh }}">Hope over Homeless Roster</a></li>
+    <li><a href="{{ links.dj }}">Peer Support DJ Roster</a></li>
+  </ul>
+</div>
+</body></html>
